@@ -1,0 +1,15 @@
+<p>p2p works!</p>
+
+<p>My ID: {{ peer.id }}</p>
+
+<p>Peer ID: {{ peerId }}</p>
+
+Connections:
+<ul>
+  <li *ngFor="let connection of connections">
+    {{ connection.peer }}
+    &nbsp; Online: {{ connection.open }}
+
+    <input type="text" [value]="state[connection.label] || ''" (input)="writeToConnection(connection.label, $event.target.value)" />
+  </li>
+</ul>
