@@ -1,0 +1,11 @@
+{
+  "targets": {
+    "webrtc-9d9fc": {
+      "hosting": {
+        "webrtc": [
+          "webrtc-9d9fc"
+        ]
+      }
+    }
+  }
+}

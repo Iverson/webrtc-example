@@ -1,0 +1,19 @@
+{
+  "hosting": [
+    {
+      "target": "webrtc",
+      "public": "docs/webrtc",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ]
+    }
+  ]
+}

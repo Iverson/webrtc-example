@@ -1,15 +1,25 @@
-<p>p2p works!</p>
+<p>P2P Chat!</p>
 
-<p>My ID: {{ peer.id }}</p>
+<p>My ID: {{ id }}</p>
 
-<p>Peer ID: {{ peerId }}</p>
+<button [disabled]="chatChannel" (click)="createNewRoom()">Create New Chat</button>
+<button [disabled]="chatChannel" (click)="joinRoom()">Join Chat</button>
+<button *ngIf="room && chatChannel" (click)="leaveRoom()">Leave Chat</button>
 
-Connections:
+<div *ngIf="room && chatChannel">
+  <br />
+  Chat ID: {{ room?.id }} <br /><br />
+  <input
+    type="text"
+    placeholder="Write a message..."
+    [(ngModel)]="messageText"
+    [disabled]="chatChannel.readyState !== 'open'"
+    (keydown.enter)="sendMessage()"
+  />
+  <span>{{ messageText }}</span>
+</div>
 <ul>
-  <li *ngFor="let connection of connections">
-    {{ connection.peer }}
-    &nbsp; Online: {{ connection.open }}
-
-    <input type="text" [value]="state[connection.label] || ''" (input)="writeToConnection(connection.label, $event.target.value)" />
+  <li *ngFor="let message of messages">
+    {{ message }}
   </li>
 </ul>
