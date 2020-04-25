@@ -208,6 +208,7 @@ export class P2pComponent implements OnInit {
     if (this.rtcPeerConnection) {
       this.rtcPeerConnection.close()
     }
+    this.room?.ref.delete()
     this.room = undefined
     this.chatChannel = undefined
     this.messages = []
