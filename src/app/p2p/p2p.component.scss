@@ -1,3 +1,38 @@
-.head {
+.root {
   display: flex;
+  height: 100%;
+}
+
+.chat {
+  width: 50%;
+  padding: 20px;
+
+  .head {
+    display: flex;
+  }
+}
+
+.game {
+  width: 50%;
+  height: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+
+  .canvas {
+    position: relative;
+    border: 1px solid #666;
+    height: 100%;
+  }
+
+  .cursor {
+    position: absolute;
+    width: 50px;
+    height: 4px;
+    background: #48D1FD;
+    left: 50%;
+    top: 50%;
+    margin: -2px 0 0 -25px;
+  }
 }

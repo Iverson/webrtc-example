@@ -1,7 +1,8 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core'
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core'
 import { ActivatedRoute } from '@angular/router'
 import { AngularFirestore, DocumentSnapshot } from '@angular/fire/firestore'
 import { Subscription } from 'rxjs'
+import { DataMessage, RemoteMoveMessage } from './DataMessage'
 
 function guid() {
   return Math.floor(Math.random() * 10000).toString()
@@ -30,6 +31,48 @@ interface Room {
   answer?: {}
 }
 
+function createPositionFunction() {
+  const G = 9.8
+  let prevAccelerationDate: Date | null = null
+  const prevAcceleration: RemoteMoveMessage['payload'] = { x: 0, y: 0, z: 0 }
+  const prevVelocity: RemoteMoveMessage['payload'] = { x: 0, y: 0, z: 0 }
+  const prevPosition: RemoteMoveMessage['payload'] = { x: 0, y: 0, z: 0 }
+
+  const getAxisPosition = (name: keyof RemoteMoveMessage['payload'], accelerationDelta: number, interval: number) => {
+    const acceleration = accelerationDelta * G
+    const absAcceleration = Math.abs(accelerationDelta)
+    const acc = prevAcceleration[name] + acceleration
+    if (absAcceleration < 0.2) {
+      return prevPosition[name]
+    }
+    const velocity = prevVelocity[name] + acc * interval
+    const positionDelta = velocity * interval + (acc * interval * interval) / 2
+    const position = prevPosition[name] + positionDelta
+    prevAcceleration[name] = acceleration
+    prevVelocity[name] = velocity
+    prevPosition[name] = position
+    return position
+  }
+
+  return (acceleration: RemoteMoveMessage['payload']): RemoteMoveMessage['payload'] => {
+    const date = new Date()
+
+    if (!prevAccelerationDate) {
+      prevAccelerationDate = date
+      // prevAcceleration = acceleration
+      return prevPosition
+    }
+
+    const interval = (date.getTime() - prevAccelerationDate.getTime()) / 100
+    prevAccelerationDate = date
+    return {
+      x: getAxisPosition('x', acceleration.x, interval),
+      y: getAxisPosition('y', acceleration.y, interval),
+      z: getAxisPosition('z', acceleration.z, interval),
+    }
+  }
+}
+
 @Component({
   selector: 'app-p2p',
   templateUrl: './p2p.component.html',
@@ -44,6 +87,11 @@ export class P2pComponent implements OnInit, OnDestroy {
   chatChannel: RTCDataChannel | undefined
   messages: string[] = []
   messageText = ''
+
+  @ViewChild('canvas') canvasRef: ElementRef<HTMLElement>
+  @ViewChild('cursor') cursorRef: ElementRef<HTMLElement>
+
+  calcPosition = createPositionFunction()
 
   constructor(
     private route: ActivatedRoute, //
@@ -189,9 +237,18 @@ export class P2pComponent implements OnInit, OnDestroy {
     this.chatChannel = channel
 
     channel.onmessage = (event) => {
-      console.log('received: ' + event.data)
-      this.messages.push(event.data)
-      this.ref.detectChanges()
+      if (!event.data) {
+        return
+      }
+
+      try {
+        const message = JSON.parse(event.data)
+        this.onDataMessage(message)
+      } catch (e) {
+        console.log(e)
+        this.ref.detectChanges()
+        this.messages.push(event.data)
+      }
     }
 
     channel.onopen = () => {
@@ -207,6 +264,30 @@ export class P2pComponent implements OnInit, OnDestroy {
     channel.onclose = () => {
       console.log('datachannel close')
       this.destroyChat()
+    }
+  }
+
+  onDataMessage(message: DataMessage) {
+    switch (message.type) {
+      case 'remote_move': {
+        const canvasNode = this.canvasRef.nativeElement
+        const cursoreNode = this.cursorRef.nativeElement
+        const { offsetWidth, offsetHeight } = canvasNode
+        const maxDeltaX = offsetWidth / 2
+        const maxDeltaY = offsetHeight / 2
+        const { x, z } = this.calcPosition(message.payload)
+        const newX = x
+        const newY = -z
+        const cursorPosition = {
+          x: Math.min(Math.abs(newX), maxDeltaX) * (newX < 0 ? -1 : 1),
+          y: Math.min(Math.abs(newY), maxDeltaY) * (newY < 0 ? -1 : 1),
+          z: 0,
+        }
+        console.log('newX: ', newX)
+        cursoreNode.style.transform = `translate(${cursorPosition.x}px, 0)`
+        break
+      }
+      default:
     }
   }
 

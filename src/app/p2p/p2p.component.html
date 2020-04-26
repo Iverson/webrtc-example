@@ -1,41 +1,54 @@
-<div class="head">
-  <div>
-    <p>P2P Chat!</p>
+<div class="root">
+  <div class="chat">
+    <div class="head">
+      <div>
+        <div>P2P Chat!</div>
 
-    <p>
-      My ID: <b>{{ id }}</b>
-    </p>
+        <p>
+          My ID: <b>{{ id }}</b>
+        </p>
 
-    <button [disabled]="chatChannel" (click)="createNewRoom()">Create New Chat</button>
-    <button [disabled]="chatChannel" (click)="joinRoom()">Join Chat</button>
-    <button *ngIf="room && chatChannel" (click)="leaveRoom()">Leave Chat</button>
+        <button [disabled]="chatChannel" (click)="createNewRoom()">Create New Chat</button>
+        <button [disabled]="chatChannel" (click)="joinRoom()">Join Chat</button>
+        <button *ngIf="room && chatChannel" (click)="leaveRoom()">Leave Chat</button>
 
-    <div *ngIf="room">
-      <br /><br />
-      Chat ID: <b>{{ room?.id }}</b> <br />
-      <small>You can use QR-code for joining from mobile ->>></small>
+        <div *ngIf="room">
+          <br /><br />
+          Chat ID: <b>{{ room?.id }}</b> <br />
+          <small>You can use QR-code for joining from mobile ->>></small>
+        </div>
+      </div>
+
+      <div *ngIf="room">
+        <qr-code [value]="room?.id" size="200" errorCorrectionLevel="M"></qr-code>
+      </div>
+    </div>
+
+    <div *ngIf="room && chatChannel">
+      <p *ngIf="chatChannel.readyState !== 'open'">Waiting for a guest...</p>
+
+      <input
+        *ngIf="chatChannel.readyState === 'open'"
+        type="text"
+        placeholder="Write a message..."
+        [(ngModel)]="messageText"
+        (keydown.enter)="sendMessage()"
+      />
+    </div>
+
+    <ul>
+      <li *ngFor="let message of messages">
+        {{ message }}
+      </li>
+    </ul>
+  </div>
+
+  <div class="game">
+    <div>Game</div>
+    <br />
+
+    <div class="canvas" #canvas>
+      <div #cursor class="cursor"></div>
     </div>
   </div>
-
-  <div *ngIf="room">
-    <qr-code [value]="room?.id" size="200" errorCorrectionLevel="M"></qr-code>
-  </div>
 </div>
-
-<div *ngIf="room && chatChannel">
-  <p *ngIf="chatChannel.readyState !== 'open'">Waiting for a guest...</p>
-
-  <input
-    *ngIf="chatChannel.readyState === 'open'"
-    type="text"
-    placeholder="Write a message..."
-    [(ngModel)]="messageText"
-    (keydown.enter)="sendMessage()"
-  />
-</div>
-
-<ul>
-  <li *ngFor="let message of messages">
-    {{ message }}
-  </li>
-</ul>
