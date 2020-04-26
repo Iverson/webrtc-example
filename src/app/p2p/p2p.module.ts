@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common'
 import { FormsModule } from '@angular/forms'
 import { AngularFireModule } from '@angular/fire'
 import { AngularFirestoreModule } from '@angular/fire/firestore'
+import { QrCodeModule } from 'ng-qrcode'
 
 import { P2pRoutingModule } from './p2p-routing.module'
 import { P2pComponent } from './p2p.component'
@@ -25,6 +26,7 @@ const config = {
     AngularFireModule.initializeApp(config),
     AngularFirestoreModule,
     FormsModule,
+    QrCodeModule,
   ],
 })
 export class P2pModule {}

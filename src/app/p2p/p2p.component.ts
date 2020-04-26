@@ -1,9 +1,16 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core'
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core'
 import { ActivatedRoute } from '@angular/router'
 import { AngularFirestore, DocumentSnapshot } from '@angular/fire/firestore'
+import { Subscription } from 'rxjs'
 
 function guid() {
   return Math.floor(Math.random() * 10000).toString()
+}
+
+let numberIdCount = 0
+function numberId() {
+  numberIdCount++
+  return numberIdCount
 }
 
 const rtcConfig: RTCConfiguration = {
@@ -18,6 +25,7 @@ const rtcConfig: RTCConfiguration = {
 interface Room {
   id?: string
   creatorId?: string
+  dataChannelId?: number
   offer?: {}
   answer?: {}
 }
@@ -27,9 +35,10 @@ interface Room {
   templateUrl: './p2p.component.html',
   styleUrls: ['./p2p.component.scss'],
 })
-export class P2pComponent implements OnInit {
+export class P2pComponent implements OnInit, OnDestroy {
   id: string = guid()
   room: DocumentSnapshot<Room> | undefined
+  roomSubscription: Subscription
   state: Record<string, string> = {}
   rtcPeerConnection: RTCPeerConnection
   chatChannel: RTCDataChannel | undefined
@@ -44,6 +53,10 @@ export class P2pComponent implements OnInit {
 
   ngOnInit(): void {}
 
+  ngOnDestroy(): void {
+    this.destroyChat()
+  }
+
   createNewConnection() {
     if (this.rtcPeerConnection) {
       this.rtcPeerConnection.close()
@@ -56,7 +69,8 @@ export class P2pComponent implements OnInit {
   async createNewRoom() {
     this.messages = []
     this.createNewConnection()
-    const dc = this.rtcPeerConnection.createDataChannel('chat-channel')
+    const dc = this.rtcPeerConnection.createDataChannel('chat-channel-host', { id: numberId(), negotiated: true, protocol: 'sctp' })
+    console.log('dc', dc)
     this.handleChatChannel(dc)
 
     const roomsCollection = this.firestore.collection<Room>('rooms')
@@ -74,8 +88,9 @@ export class P2pComponent implements OnInit {
     await this.rtcPeerConnection.setLocalDescription(offer)
     console.log('Created offer:', offer)
 
-    const roomWithOffer = {
+    const roomWithOffer: Room = {
       creatorId: this.id,
+      dataChannelId: dc.id as any,
       offer: {
         type: offer.type,
         sdp: offer.sdp,
@@ -84,7 +99,7 @@ export class P2pComponent implements OnInit {
     await roomDoc.set(roomWithOffer)
 
     // Listening for remote session description below
-    roomDoc.snapshotChanges().subscribe(async (snapshot) => {
+    this.roomSubscription = roomDoc.snapshotChanges().subscribe(async (snapshot) => {
       this.room = snapshot.payload
       const data = snapshot.payload.data()
       if (!this.rtcPeerConnection.currentRemoteDescription && data?.answer) {
@@ -115,14 +130,19 @@ export class P2pComponent implements OnInit {
     this.createNewConnection()
     this.messages = []
 
-    this.rtcPeerConnection.ondatachannel = (event) => {
-      this.handleChatChannel(event.channel)
-    }
     const roomRef = this.firestore.collection('rooms').doc<Room>(`${roomId}`)
     roomRef.snapshotChanges().subscribe(({ payload }) => (this.room = payload.exists ? payload : undefined))
     const roomSnapshot = await roomRef.get().toPromise()
 
     if (roomSnapshot.exists) {
+      const room = roomSnapshot.data() as Room
+      const dc = this.rtcPeerConnection.createDataChannel('chat-channel-guest', {
+        negotiated: true,
+        id: room.dataChannelId,
+        protocol: 'sctp',
+      })
+      this.handleChatChannel(dc)
+
       // Listening for remote ICE candidates below
       roomRef
         .collection('callerCandidates')
@@ -148,9 +168,7 @@ export class P2pComponent implements OnInit {
       })
 
       // Code for creating SDP answer below
-      const room = roomSnapshot.data() as Room
-      const offer = room.offer
-      await this.rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(offer))
+      await this.rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(room.offer))
       const answer = await this.rtcPeerConnection.createAnswer()
       await this.rtcPeerConnection.setLocalDescription(answer)
 
@@ -208,6 +226,7 @@ export class P2pComponent implements OnInit {
     if (this.rtcPeerConnection) {
       this.rtcPeerConnection.close()
     }
+    this.roomSubscription?.unsubscribe()
     this.room?.ref.delete()
     this.room = undefined
     this.chatChannel = undefined

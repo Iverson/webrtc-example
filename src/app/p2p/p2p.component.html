@@ -1,23 +1,39 @@
-<p>P2P Chat!</p>
+<div class="head">
+  <div>
+    <p>P2P Chat!</p>
 
-<p>My ID: {{ id }}</p>
+    <p>
+      My ID: <b>{{ id }}</b>
+    </p>
 
-<button [disabled]="chatChannel" (click)="createNewRoom()">Create New Chat</button>
-<button [disabled]="chatChannel" (click)="joinRoom()">Join Chat</button>
-<button *ngIf="room && chatChannel" (click)="leaveRoom()">Leave Chat</button>
+    <button [disabled]="chatChannel" (click)="createNewRoom()">Create New Chat</button>
+    <button [disabled]="chatChannel" (click)="joinRoom()">Join Chat</button>
+    <button *ngIf="room && chatChannel" (click)="leaveRoom()">Leave Chat</button>
+
+    <div *ngIf="room">
+      <br /><br />
+      Chat ID: <b>{{ room?.id }}</b> <br />
+      <small>You can use QR-code for joining from mobile ->>></small>
+    </div>
+  </div>
+
+  <div *ngIf="room">
+    <qr-code [value]="room?.id" size="200" errorCorrectionLevel="M"></qr-code>
+  </div>
+</div>
 
 <div *ngIf="room && chatChannel">
-  <br />
-  Chat ID: {{ room?.id }} <br /><br />
+  <p *ngIf="chatChannel.readyState !== 'open'">Waiting for a guest...</p>
+
   <input
+    *ngIf="chatChannel.readyState === 'open'"
     type="text"
     placeholder="Write a message..."
     [(ngModel)]="messageText"
-    [disabled]="chatChannel.readyState !== 'open'"
     (keydown.enter)="sendMessage()"
   />
-  <span>{{ messageText }}</span>
 </div>
+
 <ul>
   <li *ngFor="let message of messages">
     {{ message }}
